@@ -66,6 +66,22 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
     return `https://wa.me/57${c.telefono}?text=${msg}`
   }
 
+  const enviarRecordatorio = async (c: Cliente) => {
+    const res = await fetch('/api/send-whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telefono: c.telefono,
+        nombre: c.nombre,
+        vehiculo: c.vehiculo,
+        placa: c.placa
+      })
+    })
+    const data = await res.json()
+    if (data.ok) alert('✅ WhatsApp enviado')
+    else alert('❌ Error: ' + data.error)
+  }
+
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '1.5rem' }}>
@@ -145,6 +161,7 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
             <a
               href={wa(c)}
               target="_blank"
+              rel="noreferrer"
               style={{
                 padding: '6px 14px',
                 borderRadius: '6px',
@@ -157,6 +174,21 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
             >
               WhatsApp
             </a>
+            <button
+              onClick={() => enviarRecordatorio(c)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                background: '#f0f0f0',
+                color: '#111',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              Enviar recordatorio
+            </button>
           </div>
         </div>
       ))}
