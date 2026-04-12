@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export default function FormularioCliente() {
+export default function FormularioCliente({ onGuardado }: { onGuardado?: () => void }) {
   const [form, setForm] = useState({
     nombre: '',
     telefono: '',
@@ -39,6 +39,7 @@ export default function FormularioCliente() {
       setMensaje('❌ Error: ' + error.message)
     } else {
       setMensaje('✅ Cliente guardado')
+        onGuardado?.()      
       setForm({ nombre: '', telefono: '', vehiculo: '', placa: '', tipo_servicio: '', fecha_servicio: '', notas: '' })
       setTimeout(() => setMensaje(''), 3000)
     }
