@@ -1,6 +1,7 @@
 import { UserButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import FormularioCliente from './components/FormularioCliente'
 
 export default async function Home() {
   const { userId } = await auth()
@@ -12,7 +13,7 @@ export default async function Home() {
         <h1 style={{ fontSize: '1.5rem', fontWeight: '500' }}>Detailing CRM</h1>
         <UserButton />
       </div>
-      <p>Panel listo ✅</p>
+      <FormularioCliente />
     </main>
   )
 }
