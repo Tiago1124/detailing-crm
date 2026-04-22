@@ -3,6 +3,8 @@ import { UserButton, useUser } from '@clerk/nextjs'
 import { useState } from 'react'
 import FormularioCliente from './components/FormularioCliente'
 import ListaClientes from './components/ListaClientes'
+import Dashboard from './components/Dashboard'
+
 
 const NAV_SEDE = [
   { key: 'clientes', label: 'Clientes', icon: '◈' },
@@ -152,8 +154,9 @@ export default function Home() {
             borderRadius: 'var(--radius-lg)', padding: '32px', textAlign: 'center',
             color: 'var(--text3)', fontSize: '14px',
           }}>
-            Dashboard en construcción — próximo módulo
-          </div>
+          {tab === 'dashboard' && isAdmin && (
+            <Dashboard empresa={empresa} />
+        )}          </div>
         )}
         {tab === 'datos' && (
           <div style={{
