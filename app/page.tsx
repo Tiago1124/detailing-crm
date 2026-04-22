@@ -4,6 +4,7 @@ import { useState } from 'react'
 import FormularioCliente from './components/FormularioCliente'
 import ListaClientes from './components/ListaClientes'
 import Dashboard from './components/Dashboard'
+import GestionDatos from './components/GestionDatos'
 
 
 const NAV_SEDE = [
@@ -164,7 +165,9 @@ export default function Home() {
             borderRadius: 'var(--radius-lg)', padding: '32px', textAlign: 'center',
             color: 'var(--text3)', fontSize: '14px',
           }}>
-            Gestión de datos en construcción — próximo módulo
+            {tab === 'datos' && isAdmin && (
+          <GestionDatos empresa={empresa} />
+          )}
           </div>
         )}
       </main>
