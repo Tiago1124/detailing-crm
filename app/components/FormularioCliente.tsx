@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@clerk/nextjs'
+import { createSupabaseClient } from '@/lib/supabase'
 
 const SERVICIOS: Record<string, number> = {
   'Detailing completo': 2,
@@ -24,6 +25,8 @@ export default function FormularioCliente({
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState('')
 
+  const { getToken } = useAuth()
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     if (name === 'tipo_servicio') {
@@ -43,7 +46,10 @@ export default function FormularioCliente({
     const proximoRecordatorio = new Date(fechaServicio)
     proximoRecordatorio.setMonth(proximoRecordatorio.getMonth() + Number(form.meses_recordatorio))
 
-    const { error } = await supabase.from('clientes').insert([{
+    const token = await getToken({ template: 'supabase' })
+    const client = createSupabaseClient(token)
+
+    const { error } = await client.from('clientes').insert([{
       nombre: form.nombre,
       telefono: form.telefono,
       vehiculo: form.vehiculo,

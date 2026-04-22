@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@clerk/nextjs'
 import { createSupabaseClient } from '@/lib/supabase'
 
@@ -121,11 +120,8 @@ export default function ListaClientes({
     alert(data.ok ? '✓ WhatsApp enviado' : '✗ Error: ' + data.error)
   }
 
-  
-
   return (
     <div>
-      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '28px' }}>
         {[
           { label: 'Total clientes', valor: clientes.length, color: 'var(--text)', accent: 'var(--accent)' },
@@ -151,7 +147,6 @@ export default function ListaClientes({
         ))}
       </div>
 
-      {/* Toolbar */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
           <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: '14px' }}>⌕</span>
