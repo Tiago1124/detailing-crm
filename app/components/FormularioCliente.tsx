@@ -2,162 +2,228 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+const SERVICIOS: Record<string, number> = {
+  'Detailing completo': 2,
+  'Lavado exterior': 1,
+  'Pulida y encerada': 3,
+  'Limpieza interior': 2,
+  'Ceramic coating': 6,
+}
+
 export default function FormularioCliente({ onGuardado }: { onGuardado?: () => void }) {
   const [form, setForm] = useState({
-    nombre: '',
-    telefono: '',
-    vehiculo: '',
-    placa: '',
-    tipo_servicio: '',
-    fecha_servicio: '',
-    notas: ''
+    nombre: '', telefono: '', vehiculo: '', placa: '',
+    tipo_servicio: '', fecha_servicio: '', notas: '', meses_recordatorio: 2
   })
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState('')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    if (name === 'tipo_servicio') {
+      setForm(f => ({ ...f, tipo_servicio: value, meses_recordatorio: SERVICIOS[value] || 2 }))
+    } else {
+      setForm(f => ({ ...f, [name]: value }))
+    }
   }
 
   const handleSubmit = async () => {
     if (!form.nombre || !form.telefono || !form.fecha_servicio) {
-      setMensaje('⚠ Completa nombre, teléfono y fecha')
+      setMensaje('error:Completa nombre, teléfono y fecha')
       return
     }
     setLoading(true)
     const fechaServicio = new Date(form.fecha_servicio)
     const proximoRecordatorio = new Date(fechaServicio)
-    proximoRecordatorio.setMonth(proximoRecordatorio.getMonth() + 2)
+    proximoRecordatorio.setMonth(proximoRecordatorio.getMonth() + Number(form.meses_recordatorio))
 
     const { error } = await supabase.from('clientes').insert([{
-      ...form,
+      nombre: form.nombre,
+      telefono: form.telefono,
+      vehiculo: form.vehiculo,
+      placa: form.placa.toUpperCase(),
+      tipo_servicio: form.tipo_servicio,
+      fecha_servicio: form.fecha_servicio,
+      notas: form.notas,
       proximo_recordatorio: proximoRecordatorio.toISOString().split('T')[0]
     }])
 
     setLoading(false)
     if (error) {
-      setMensaje('❌ Error: ' + error.message)
+      setMensaje('error:' + error.message)
     } else {
-      setMensaje('✅ Cliente guardado')
-        onGuardado?.()      
-      setForm({ nombre: '', telefono: '', vehiculo: '', placa: '', tipo_servicio: '', fecha_servicio: '', notas: '' })
-      setTimeout(() => setMensaje(''), 3000)
+      setMensaje('ok:Cliente registrado correctamente')
+      setForm({ nombre: '', telefono: '', vehiculo: '', placa: '', tipo_servicio: '', fecha_servicio: '', notas: '', meses_recordatorio: 2 })
+      setTimeout(() => { setMensaje(''); onGuardado?.() }, 1200)
     }
   }
 
+  const isError = mensaje.startsWith('error:')
+  const isOk = mensaje.startsWith('ok:')
+  const msgText = mensaje.slice(mensaje.indexOf(':') + 1)
+
   return (
-    <div style={{
-      background: 'white',
-      border: '1px solid #f0f0f0',
-      borderRadius: '16px',
-      padding: '2rem',
-      marginBottom: '2rem',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
-    }}>
-      <h2 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1.5rem', color: '#111' }}>
-        Registrar nuevo servicio
-      </h2>
+    <div style={{ maxWidth: '680px' }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        {[
-          { label: 'Nombre completo', name: 'nombre', placeholder: 'Juan Pérez' },
-          { label: 'Teléfono WhatsApp', name: 'telefono', placeholder: '3001234567' },
-          { label: 'Vehículo', name: 'vehiculo', placeholder: 'Toyota Corolla 2022' },
-          { label: 'Placa', name: 'placa', placeholder: 'ABC123' },
-        ].map(f => (
-          <div key={f.name}>
-            <label style={labelStyle}>{f.label}</label>
-            <input
-              name={f.name}
-              value={form[f.name as keyof typeof form]}
-              onChange={handleChange}
-              placeholder={f.placeholder}
-              style={inputStyle}
-            />
-          </div>
-        ))}
+      {/* Campos */}
+      <div style={{
+        background: 'var(--bg2)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '32px',
+        marginBottom: '16px',
+      }}>
+        <p style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '13px',
+          fontWeight: '600',
+          color: 'var(--text3)',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          marginBottom: '24px',
+        }}>Datos del cliente</p>
 
-        <div>
-          <label style={labelStyle}>Tipo de servicio</label>
-          <select name="tipo_servicio" value={form.tipo_servicio} onChange={handleChange} style={inputStyle}>
-            <option value="">Seleccionar...</option>
-            <option>Detailing completo</option>
-            <option>Lavado exterior</option>
-            <option>Pulida y encerada</option>
-            <option>Limpieza interior</option>
-            <option>Ceramic coating</option>
-          </select>
-        </div>
-
-        <div>
-          <label style={labelStyle}>Fecha del servicio</label>
-          <input
-            name="fecha_servicio"
-            type="date"
-            value={form.fecha_servicio}
-            onChange={handleChange}
-            style={inputStyle}
-          />
-        </div>
-
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label style={labelStyle}>Notas</label>
-          <textarea
-            name="notas"
-            value={form.notas}
-            onChange={handleChange}
-            rows={3}
-            placeholder="Observaciones del servicio..."
-            style={{ ...inputStyle, resize: 'none' }}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {[
+            { label: 'Nombre completo', name: 'nombre', placeholder: 'Juan Pérez', col: 1 },
+            { label: 'WhatsApp', name: 'telefono', placeholder: '3001234567', col: 1 },
+            { label: 'Vehículo', name: 'vehiculo', placeholder: 'Toyota Corolla 2022', col: 1 },
+            { label: 'Placa', name: 'placa', placeholder: 'ABC123', col: 1 },
+          ].map(f => (
+            <div key={f.name}>
+              <label style={lbl}>{f.label}</label>
+              <input
+                name={f.name}
+                value={form[f.name as keyof typeof form] as string}
+                onChange={handleChange}
+                placeholder={f.placeholder}
+                style={inp}
+              />
+            </div>
+          ))}
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
-        {mensaje
-          ? <span style={{ fontSize: '13px', color: mensaje.includes('✅') ? '#16a34a' : '#dc2626' }}>{mensaje}</span>
-          : <span />
-        }
+      <div style={{
+        background: 'var(--bg2)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '32px',
+        marginBottom: '16px',
+      }}>
+        <p style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '13px',
+          fontWeight: '600',
+          color: 'var(--text3)',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          marginBottom: '24px',
+        }}>Servicio</p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label style={lbl}>Tipo de servicio</label>
+            <select name="tipo_servicio" value={form.tipo_servicio} onChange={handleChange} style={inp}>
+              <option value="">Seleccionar...</option>
+              {Object.keys(SERVICIOS).map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={lbl}>Fecha del servicio</label>
+            <input name="fecha_servicio" type="date" value={form.fecha_servicio} onChange={handleChange} style={inp} />
+          </div>
+
+          <div>
+            <label style={lbl}>Próximo recordatorio (meses)</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <input
+                name="meses_recordatorio"
+                type="number"
+                min={1}
+                max={24}
+                value={form.meses_recordatorio}
+                onChange={handleChange}
+                style={{ ...inp, width: '80px' }}
+              />
+              <span style={{ fontSize: '13px', color: 'var(--text3)' }}>
+                {form.tipo_servicio ? `Sugerido: ${SERVICIOS[form.tipo_servicio]} meses` : 'Selecciona un servicio'}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={lbl}>Notas</label>
+            <textarea
+              name="notas"
+              value={form.notas}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Observaciones del servicio..."
+              style={{ ...inp, resize: 'none' }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Acciones */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {mensaje ? (
+          <span style={{
+            fontSize: '13px',
+            color: isOk ? 'var(--green)' : isError ? 'var(--red)' : 'var(--text2)',
+            background: isOk ? 'var(--green-bg)' : isError ? 'var(--red-bg)' : 'transparent',
+            padding: '6px 12px',
+            borderRadius: '6px',
+          }}>
+            {isOk ? '✓ ' : '⚠ '}{msgText}
+          </span>
+        ) : <span />}
+
         <button
           onClick={handleSubmit}
           disabled={loading}
           style={{
-            padding: '10px 28px',
-            borderRadius: '8px',
-            background: loading ? '#999' : '#111',
+            padding: '12px 32px',
+            borderRadius: '10px',
+            background: loading ? 'var(--bg4)' : 'var(--accent)',
             color: 'white',
             border: 'none',
             cursor: loading ? 'not-allowed' : 'pointer',
             fontSize: '14px',
             fontWeight: '500',
-            transition: 'background 0.2s'
+            fontFamily: 'var(--font-body)',
+            transition: 'all 0.2s',
+            letterSpacing: '0.01em',
           }}
         >
-          {loading ? 'Guardando...' : 'Guardar cliente'}
+          {loading ? 'Guardando...' : 'Guardar cliente →'}
         </button>
       </div>
     </div>
   )
 }
 
-const labelStyle: React.CSSProperties = {
-  fontSize: '12px',
+const lbl: React.CSSProperties = {
+  fontSize: '11px',
   fontWeight: '500',
-  color: '#666',
+  color: 'var(--text3)',
   display: 'block',
   marginBottom: '6px',
   textTransform: 'uppercase',
-  letterSpacing: '0.05em'
+  letterSpacing: '0.08em',
 }
 
-const inputStyle: React.CSSProperties = {
+const inp: React.CSSProperties = {
   width: '100%',
-  padding: '10px 12px',
+  padding: '10px 14px',
   borderRadius: '8px',
-  border: '1px solid #e5e5e5',
+  border: '1px solid var(--border)',
+  background: 'var(--bg3)',
+  color: 'var(--text)',
   fontSize: '14px',
-  color: '#111',
-  background: '#fafafa',
   outline: 'none',
-  fontFamily: 'inherit'
+  fontFamily: 'var(--font-body)',
+  transition: 'border-color 0.15s',
 }
