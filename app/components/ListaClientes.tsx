@@ -101,7 +101,14 @@ export default function ListaClientes({
     const res = await fetch('/api/send-whatsapp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telefono: c.telefono, nombre: c.nombre, vehiculo: c.vehiculo, placa: c.placa })
+      body: JSON.stringify({
+        telefono: c.telefono,
+        nombre: c.nombre,
+        vehiculo: c.vehiculo,
+        placa: c.placa,
+        sede: c.sede,
+        empresa: c.empresa,
+      })
     })
     const data = await res.json()
     alert(data.ok ? '✓ WhatsApp enviado' : '✗ Error: ' + data.error)
