@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@clerk/nextjs'
+import { createSupabaseClient } from '@/lib/supabase'
 
 type Cliente = {
   id: string
@@ -56,9 +58,14 @@ export default function ListaClientes({
   const [filtro, setFiltro] = useState('todos')
   const [busqueda, setBusqueda] = useState('')
 
+  const { getToken } = useAuth()
+
   const cargar = async () => {
     setLoading(true)
-    let query = supabase
+    const token = await getToken({ template: 'supabase' })
+    const client = createSupabaseClient(token)
+
+    let query = client
       .from('clientes')
       .select('*')
       .order('proximo_recordatorio', { ascending: true })
@@ -113,6 +120,8 @@ export default function ListaClientes({
     const data = await res.json()
     alert(data.ok ? '✓ WhatsApp enviado' : '✗ Error: ' + data.error)
   }
+
+  
 
   return (
     <div>

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@clerk/nextjs'
+import { createSupabaseClient } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 
 type Cliente = {
@@ -43,12 +44,17 @@ export default function GestionDatos({ empresa }: { empresa: string }) {
   const [vista, setVista] = useState<'clientes' | 'encuestas'>('clientes')
   const [busqueda, setBusqueda] = useState('')
 
+  const { getToken } = useAuth()
+
   useEffect(() => {
     const cargar = async () => {
       setLoading(true)
+      const token = await getToken({ template: 'supabase' })
+      const client = createSupabaseClient(token)
+
       const [{ data: cli }, { data: enc }] = await Promise.all([
-        supabase.from('clientes').select('*').eq('empresa', empresa).order('created_at', { ascending: false }),
-        supabase.from('encuestas').select('*').eq('empresa', empresa).order('created_at', { ascending: false }),
+        client.from('clientes').select('*').eq('empresa', empresa).order('created_at', { ascending: false }),
+        client.from('encuestas').select('*').eq('empresa', empresa).order('created_at', { ascending: false }),
       ])
       setClientes(cli || [])
       setEncuestas(enc || [])

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@clerk/nextjs'
+import { createSupabaseClient } from '@/lib/supabase'
 
 type Encuesta = {
   id: string
@@ -62,12 +63,17 @@ export default function Dashboard({ empresa }: { empresa: string }) {
   const [loading, setLoading] = useState(true)
   const [vistaActiva, setVistaActiva] = useState<'sedes' | 'asesores'>('sedes')
 
+  const { getToken } = useAuth()
+
   useEffect(() => {
     const cargar = async () => {
       setLoading(true)
+      const token = await getToken({ template: 'supabase' })
+      const client = createSupabaseClient(token)
+
       const [{ data: enc }, { data: cli }] = await Promise.all([
-        supabase.from('encuestas').select('*').eq('empresa', empresa),
-        supabase.from('clientes').select('*').eq('empresa', empresa),
+        client.from('encuestas').select('*').eq('empresa', empresa),
+        client.from('clientes').select('*').eq('empresa', empresa),
       ])
       setEncuestas(enc || [])
       setClientes(cli || [])
@@ -178,7 +184,7 @@ export default function Dashboard({ empresa }: { empresa: string }) {
           </div>
         </div>
 
-        {/* Proximos recordatorios */}
+        {/* Estado mantenimientos */}
         <div style={{
           background: 'var(--bg2)', border: '1px solid var(--border)',
           borderRadius: 'var(--radius-lg)', padding: '24px',
