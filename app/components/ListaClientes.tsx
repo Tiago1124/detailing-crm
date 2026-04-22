@@ -12,6 +12,8 @@ type Cliente = {
   fecha_servicio: string
   proximo_recordatorio: string
   notas: string
+  sede: string
+  empresa: string
 }
 
 function diasRestantes(fecha: string) {
@@ -41,7 +43,14 @@ const FILTROS = [
   { key: 'ok', label: 'Al día' },
 ]
 
-export default function ListaClientes({ refresh }: { refresh: number }) {
+export default function ListaClientes({
+  refresh, empresa, sede, isAdmin
+}: {
+  refresh: number
+  empresa?: string
+  sede?: string | null
+  isAdmin?: boolean
+}) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('todos')
@@ -49,9 +58,15 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
 
   const cargar = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('clientes').select('*')
+    let query = supabase
+      .from('clientes')
+      .select('*')
       .order('proximo_recordatorio', { ascending: true })
+
+    if (empresa) query = query.eq('empresa', empresa)
+    if (sede) query = query.eq('sede', sede)
+
+    const { data } = await query
     setClientes(data || [])
     setLoading(false)
   }
@@ -78,7 +93,7 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
   const proximos = clientes.filter(c => { const d = diasRestantes(c.proximo_recordatorio); return d >= 0 && d <= 7 }).length
 
   const wa = (c: Cliente) => {
-    const msg = encodeURIComponent(`Hola ${c.nombre.split(' ')[0]} 👋, te recordamos que tu vehículo ${c.vehiculo} (${c.placa}) tiene pendiente su servicio de mantenimiento. ¡Agéndalo aquí!`)
+    const msg = encodeURIComponent(`Hola ${c.nombre.split(' ')[0]} 👋, te recordamos que tu moto ${c.vehiculo} (${c.placa}) tiene pendiente su servicio de mantenimiento. ¡Agéndalo aquí!`)
     return `https://wa.me/57${c.telefono}?text=${msg}`
   }
 
@@ -102,16 +117,13 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
           { label: 'Esta semana', valor: proximos, color: 'var(--amber)', accent: 'var(--amber)' },
         ].map(s => (
           <div key={s.label} style={{
-            background: 'var(--bg2)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: '20px 24px',
-            position: 'relative',
-            overflow: 'hidden',
+            background: 'var(--bg2)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)', padding: '20px 24px',
+            position: 'relative', overflow: 'hidden',
           }}>
             <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-              background: s.accent, opacity: 0.6,
+              position: 'absolute', top: 0, left: 0, right: 0,
+              height: '2px', background: s.accent, opacity: 0.6,
             }} />
             <div style={{ fontSize: '28px', fontWeight: '700', color: s.color, fontFamily: 'var(--font-display)', lineHeight: 1 }}>
               {s.valor}
@@ -128,8 +140,7 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
         <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
           <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: '14px' }}>⌕</span>
           <input
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
+            value={busqueda} onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar por nombre, placa o vehículo..."
             style={{
               width: '100%', padding: '9px 12px 9px 32px',
@@ -139,7 +150,6 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
             }}
           />
         </div>
-
         <div style={{ display: 'flex', gap: '6px', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px' }}>
           {FILTROS.map(f => (
             <button key={f.key} onClick={() => setFiltro(f.key)} style={{
@@ -153,7 +163,6 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
         </div>
       </div>
 
-      {/* Lista */}
       {loading && (
         <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text3)', fontSize: '14px' }}>
           Cargando clientes...
@@ -179,23 +188,27 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
             <div key={c.id} style={{
               background: 'var(--bg2)',
               border: `1px solid ${urgente && dias < 0 ? 'rgba(242,92,92,0.2)' : urgente ? 'rgba(245,166,35,0.15)' : 'var(--border)'}`,
-              borderRadius: 'var(--radius)',
-              padding: '18px 20px',
-              transition: 'border-color 0.2s',
+              borderRadius: 'var(--radius)', padding: '18px 20px', transition: 'border-color 0.2s',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <span style={{
-                      fontWeight: '500', fontSize: '15px', color: 'var(--text)',
-                      fontFamily: 'var(--font-display)',
-                    }}>{c.nombre}</span>
+                    <span style={{ fontWeight: '500', fontSize: '15px', color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
+                      {c.nombre}
+                    </span>
                     {c.placa && (
                       <span style={{
                         fontSize: '11px', color: 'var(--text3)',
                         background: 'var(--bg3)', border: '1px solid var(--border)',
                         padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.05em',
                       }}>{c.placa}</span>
+                    )}
+                    {isAdmin && c.sede && (
+                      <span style={{
+                        fontSize: '11px', color: 'var(--accent2)',
+                        background: 'var(--accent-glow)', border: '1px solid rgba(124,106,247,0.2)',
+                        padding: '2px 7px', borderRadius: '4px',
+                      }}>{c.sede}</span>
                     )}
                   </div>
                   <div style={{ fontSize: '13px', color: 'var(--text3)', marginTop: '3px' }}>
@@ -212,8 +225,7 @@ export default function ListaClientes({ refresh }: { refresh: number }) {
 
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                marginTop: '14px', paddingTop: '12px',
-                borderTop: '1px solid var(--border)',
+                marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)',
               }}>
                 <span style={{ fontSize: '12px', color: 'var(--text3)' }}>
                   Próximo: {new Date(c.proximo_recordatorio + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
