@@ -1,8 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { createSupabaseClient } from '@/lib/supabase'
-
+ 
 const SERVICIOS: Record<string, number> = {
   'Detailing completo': 2,
   'Lavado exterior': 1,
@@ -10,7 +10,7 @@ const SERVICIOS: Record<string, number> = {
   'Limpieza interior': 2,
   'Ceramic coating': 6,
 }
-
+ 
 export default function FormularioCliente({
   onGuardado, empresa, sede
 }: {
@@ -20,13 +20,29 @@ export default function FormularioCliente({
 }) {
   const [form, setForm] = useState({
     nombre: '', telefono: '', vehiculo: '', placa: '',
-    tipo_servicio: '', fecha_servicio: '', notas: '', meses_recordatorio: 2
+    tipo_servicio: '', fecha_servicio: '', notas: '',
+    meses_recordatorio: 2, sede_seleccionada: ''
   })
+  const [sedes, setSedes] = useState<{ id: string, nombre: string, ciudad: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState('')
-
+ 
   const { getToken } = useAuth()
-
+ 
+  useEffect(() => {
+    const cargarSedes = async () => {
+      const token = await getToken({ template: 'supabase' })
+      const client = createSupabaseClient(token)
+      const { data } = await client
+        .from('sedes')
+        .select('id, nombre, ciudad')
+        .eq('empresa', empresa || 'discol')
+        .eq('activa', true)
+      setSedes(data || [])
+    }
+    cargarSedes()
+  }, [empresa])
+ 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     if (name === 'tipo_servicio') {
@@ -35,20 +51,25 @@ export default function FormularioCliente({
       setForm(f => ({ ...f, [name]: value }))
     }
   }
-
+ 
   const handleSubmit = async () => {
     if (!form.nombre || !form.telefono || !form.fecha_servicio) {
       setMensaje('error:Completa nombre, teléfono y fecha')
+      return
+    }
+    const sedeFinal = sede || form.sede_seleccionada || null
+    if (!sedeFinal) {
+      setMensaje('error:Selecciona una sede')
       return
     }
     setLoading(true)
     const fechaServicio = new Date(form.fecha_servicio)
     const proximoRecordatorio = new Date(fechaServicio)
     proximoRecordatorio.setMonth(proximoRecordatorio.getMonth() + Number(form.meses_recordatorio))
-
+ 
     const token = await getToken({ template: 'supabase' })
     const client = createSupabaseClient(token)
-
+ 
     const { error } = await client.from('clientes').insert([{
       nombre: form.nombre,
       telefono: form.telefono,
@@ -58,24 +79,24 @@ export default function FormularioCliente({
       fecha_servicio: form.fecha_servicio,
       notas: form.notas,
       empresa: empresa || 'discol',
-      sede: sede || null,
+      sede: sedeFinal,
       proximo_recordatorio: proximoRecordatorio.toISOString().split('T')[0]
     }])
-
+ 
     setLoading(false)
     if (error) {
       setMensaje('error:' + error.message)
     } else {
       setMensaje('ok:Cliente registrado correctamente')
-      setForm({ nombre: '', telefono: '', vehiculo: '', placa: '', tipo_servicio: '', fecha_servicio: '', notas: '', meses_recordatorio: 2 })
+      setForm({ nombre: '', telefono: '', vehiculo: '', placa: '', tipo_servicio: '', fecha_servicio: '', notas: '', meses_recordatorio: 2, sede_seleccionada: '' })
       setTimeout(() => { setMensaje(''); onGuardado?.() }, 1200)
     }
   }
-
+ 
   const isError = mensaje.startsWith('error:')
   const isOk = mensaje.startsWith('ok:')
   const msgText = mensaje.slice(mensaje.indexOf(':') + 1)
-
+ 
   return (
     <div style={{ maxWidth: '680px' }}>
       <div style={{
@@ -101,9 +122,38 @@ export default function FormularioCliente({
               />
             </div>
           ))}
+ 
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={lbl}>Sede</label>
+            {sede ? (
+              <div style={{
+                ...inp, opacity: 0.6, display: 'flex',
+                alignItems: 'center', cursor: 'not-allowed',
+              }}>
+                <span>{sede}</span>
+                <span style={{ fontSize: '11px', color: 'var(--text3)', marginLeft: '8px' }}>
+                  — asignada a tu usuario
+                </span>
+              </div>
+            ) : (
+              <select
+                name="sede_seleccionada"
+                value={form.sede_seleccionada}
+                onChange={handleChange}
+                style={inp}
+              >
+                <option value="">Seleccionar sede...</option>
+                {sedes.map(s => (
+                  <option key={s.id} value={s.nombre}>
+                    {s.nombre} — {s.ciudad}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       </div>
-
+ 
       <div style={{
         background: 'var(--bg2)', border: '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)', padding: '32px', marginBottom: '16px',
@@ -144,7 +194,7 @@ export default function FormularioCliente({
           </div>
         </div>
       </div>
-
+ 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {mensaje ? (
           <span style={{
@@ -168,7 +218,7 @@ export default function FormularioCliente({
     </div>
   )
 }
-
+ 
 const sectionLabel: React.CSSProperties = {
   fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '600',
   color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '24px',
@@ -183,3 +233,4 @@ const inp: React.CSSProperties = {
   color: 'var(--text)', fontSize: '14px', outline: 'none',
   fontFamily: 'var(--font-body)', transition: 'border-color 0.15s',
 }
+ 
