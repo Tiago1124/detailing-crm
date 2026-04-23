@@ -49,35 +49,59 @@ export default function Encuesta() {
   }
 
   const handleEnviar = async () => {
-    if (!form.acepta_habeas_data) {
-      setError('Debes aceptar el tratamiento de datos para continuar')
-      return
-    }
-    if (Object.keys(respuestas).length < PREGUNTAS.length) {
-      setError('Por favor responde todas las preguntas')
-      return
-    }
-    setLoading(true)
-    const { error: err } = await supabase.from('encuestas').insert([{
-      empresa,
-      sede: form.sede,
-      asesor: form.asesor,
-      nombre: form.nombre,
-      cedula: form.cedula,
-      telefono: form.telefono,
-      referencia_moto: form.referencia_moto,
-      placa: form.placa.toUpperCase(),
-      pregunta_1: respuestas[0],
-      pregunta_2: respuestas[1],
-      pregunta_3: respuestas[2],
-      pregunta_4: respuestas[3],
-      pregunta_5: respuestas[4],
-      acepta_habeas_data: form.acepta_habeas_data,
-    }])
-    setLoading(false)
-    if (err) { setError('Error al enviar: ' + err.message); return }
-    setEnviado(true)
+  if (!form.acepta_habeas_data) {
+    setError('Debes aceptar el tratamiento de datos para continuar')
+    return
   }
+  if (Object.keys(respuestas).length < PREGUNTAS.length) {
+    setError('Por favor responde todas las preguntas')
+    return
+  }
+  setLoading(true)
+
+  const { error: err } = await supabase.from('encuestas').insert([{
+    empresa,
+    sede: form.sede,
+    asesor: form.asesor,
+    nombre: form.nombre,
+    cedula: form.cedula,
+    telefono: form.telefono,
+    referencia_moto: form.referencia_moto,
+    placa: form.placa.toUpperCase(),
+    pregunta_1: respuestas[0],
+    pregunta_2: respuestas[1],
+    pregunta_3: respuestas[2],
+    pregunta_4: respuestas[3],
+    pregunta_5: respuestas[4],
+    acepta_habeas_data: form.acepta_habeas_data,
+  }])
+
+  if (err) {
+    setLoading(false)
+    setError('Error al enviar: ' + err.message)
+    return
+  }
+
+  const hoy = new Date().toISOString().split('T')[0]
+  const proximoRecordatorio = new Date()
+  proximoRecordatorio.setMonth(proximoRecordatorio.getMonth() + 2)
+
+  await supabase.from('clientes').insert([{
+    nombre: form.nombre,
+    telefono: form.telefono,
+    vehiculo: form.referencia_moto,
+    placa: form.placa.toUpperCase(),
+    empresa: empresa,
+    sede: form.sede,
+    fecha_servicio: hoy,
+    proximo_recordatorio: proximoRecordatorio.toISOString().split('T')[0],
+    tipo_servicio: 'Pendiente por asignar',
+    notas: 'Registrado desde encuesta de satisfacción',
+  }])
+
+  setLoading(false)
+  setEnviado(true)
+}
 
   if (enviado) return (
     <div style={wrapStyle}>
