@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { createSupabaseClient } from '@/lib/supabase'
-
+ 
 type Cliente = {
   id: string
   nombre: string
@@ -16,13 +16,13 @@ type Cliente = {
   sede: string
   empresa: string
 }
-
+ 
 function diasRestantes(fecha: string) {
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
   const proximo = new Date(fecha + 'T00:00:00')
   return Math.round((proximo.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
 }
-
+ 
 function Badge({ dias }: { dias: number }) {
   let bg, color, texto
   if (dias < 0) { bg = 'var(--red-bg)'; color = 'var(--red)'; texto = `Vencido ${Math.abs(dias)}d` }
@@ -36,14 +36,14 @@ function Badge({ dias }: { dias: number }) {
     }}>{texto}</span>
   )
 }
-
+ 
 const FILTROS = [
   { key: 'todos', label: 'Todos' },
   { key: 'vencidos', label: 'Vencidos' },
   { key: 'proximos', label: 'Esta semana' },
   { key: 'ok', label: 'Al día' },
 ]
-
+ 
 export default function ListaClientes({
   refresh, empresa, sede, isAdmin
 }: {
@@ -56,29 +56,41 @@ export default function ListaClientes({
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('todos')
   const [busqueda, setBusqueda] = useState('')
-
+ 
   const { getToken } = useAuth()
-
+ 
   const cargar = async () => {
     setLoading(true)
-    const token = await getToken({ template: 'supabase' })
-    const client = createSupabaseClient(token)
-
-    let query = client
-      .from('clientes')
-      .select('*')
-      .order('proximo_recordatorio', { ascending: true })
-
-    if (empresa) query = query.eq('empresa', empresa)
-    if (sede) query = query.eq('sede', sede)
-
-    const { data } = await query
-    setClientes(data || [])
-    setLoading(false)
+    try {
+      const token = await getToken({ template: 'supabase' })
+      if (!token) {
+        setLoading(false)
+        return
+      }
+      const client = createSupabaseClient(token)
+ 
+      let query = client
+        .from('clientes')
+        .select('*')
+        .order('proximo_recordatorio', { ascending: true })
+ 
+      if (empresa) query = query.eq('empresa', empresa)
+      if (sede) query = query.eq('sede', sede)
+ 
+      const { data } = await query
+      setClientes(data || [])
+    } catch (e) {
+      console.error('Error cargando clientes:', e)
+    } finally {
+      setLoading(false)
+    }
   }
-
-  useEffect(() => { cargar() }, [refresh])
-
+ 
+  useEffect(() => {
+    if (!empresa) return
+    cargar()
+  }, [refresh, empresa, sede])
+ 
   const filtrados = clientes
     .filter(c => {
       const dias = diasRestantes(c.proximo_recordatorio)
@@ -94,15 +106,15 @@ export default function ListaClientes({
         c.placa?.toLowerCase().includes(q) ||
         c.vehiculo?.toLowerCase().includes(q)
     })
-
+ 
   const vencidos = clientes.filter(c => diasRestantes(c.proximo_recordatorio) < 0).length
   const proximos = clientes.filter(c => { const d = diasRestantes(c.proximo_recordatorio); return d >= 0 && d <= 7 }).length
-
+ 
   const wa = (c: Cliente) => {
     const msg = encodeURIComponent(`Hola ${c.nombre.split(' ')[0]} 👋, te recordamos que tu moto ${c.vehiculo} (${c.placa}) tiene pendiente su servicio de mantenimiento. ¡Agéndalo aquí!`)
     return `https://wa.me/57${c.telefono}?text=${msg}`
   }
-
+ 
   const enviarRecordatorio = async (c: Cliente) => {
     const res = await fetch('/api/send-whatsapp', {
       method: 'POST',
@@ -119,7 +131,7 @@ export default function ListaClientes({
     const data = await res.json()
     alert(data.ok ? '✓ WhatsApp enviado' : '✗ Error: ' + data.error)
   }
-
+ 
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '28px' }}>
@@ -146,7 +158,7 @@ export default function ListaClientes({
           </div>
         ))}
       </div>
-
+ 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
           <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: '14px' }}>⌕</span>
@@ -173,13 +185,13 @@ export default function ListaClientes({
           ))}
         </div>
       </div>
-
+ 
       {loading && (
         <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text3)', fontSize: '14px' }}>
           Cargando clientes...
         </div>
       )}
-
+ 
       {!loading && filtrados.length === 0 && (
         <div style={{
           textAlign: 'center', padding: '60px 24px',
@@ -190,7 +202,7 @@ export default function ListaClientes({
           <p style={{ color: 'var(--text3)', fontSize: '14px' }}>No hay clientes en esta categoría</p>
         </div>
       )}
-
+ 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {filtrados.map(c => {
           const dias = diasRestantes(c.proximo_recordatorio)
@@ -233,7 +245,7 @@ export default function ListaClientes({
                 </div>
                 <Badge dias={dias} />
               </div>
-
+ 
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)',
@@ -261,3 +273,4 @@ export default function ListaClientes({
     </div>
   )
 }
+ 
